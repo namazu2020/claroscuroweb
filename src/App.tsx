@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Lenis from '@studio-freight/lenis';
 import Header from './components/Layout/Header';
@@ -23,6 +23,35 @@ import '@fontsource/inter/300.css';
 import '@fontsource/inter/400.css';
 
 const App: React.FC = () => {
+    const lenisRef = useRef<Lenis | null>(null);
+
+    // CRITICAL: Scroll to top IMMEDIATELY on mount - before anything else
+    useEffect(() => {
+        // Disable browser's automatic scroll restoration
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        // Force immediate scroll to top using multiple methods
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+
+        // Also force it after a tiny delay to override any other scripts
+        const timeout = setTimeout(() => {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            // If Lenis is initialized, scroll it to top too
+            if (lenisRef.current) {
+                lenisRef.current.scrollTo(0, { immediate: true });
+            }
+        }, 0);
+
+        return () => clearTimeout(timeout);
+    }, []);
+
     useEffect(() => {
         const lenis = new Lenis({
             duration: 1.5,
@@ -34,6 +63,11 @@ const App: React.FC = () => {
             touchMultiplier: 2,
         });
 
+        lenisRef.current = lenis;
+
+        // Immediately scroll Lenis to top on initialization
+        lenis.scrollTo(0, { immediate: true });
+
         function raf(time: number) {
             lenis.raf(time);
             requestAnimationFrame(raf);
@@ -43,6 +77,7 @@ const App: React.FC = () => {
 
         return () => {
             lenis.destroy();
+            lenisRef.current = null;
         };
     }, []);
 
